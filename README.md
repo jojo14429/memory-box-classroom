@@ -10,6 +10,7 @@ GitHub Pages: Settings → Pages → Deploy from a branch → main → /(root)�
 只使用最新 Chrome／Edge（WebGL 2、WASM、IndexedDB）。
 
 按「全螢幕」用於課室大螢幕；遊戲預設大字模式，可按「大字：開」切回。
+如瀏覽器彈出「全螢幕確認」，再按「進入全螢幕」；取消不會影響進度。
 進度保存在同一網站／瀏覽器的 IndexedDB，與 EXE 或其他瀏覽器不共用。
 無痕模式、清除網站資料、改網站網址可能失去進度；退出前稍候讓存檔同步。
 首次需要下載資源；未設定 PWA，不保證離線可重開。

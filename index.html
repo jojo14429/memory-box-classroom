@@ -21,6 +21,8 @@
     #status { white-space: pre-wrap; }
     progress { width: 80%; min-height: 24px; }
     a { color: #64402b; }
+    #fullscreen-prompt { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: #493b2e99; }
+    #fullscreen-prompt[hidden] { display: none; }
   </style>
   
 </head>
@@ -38,20 +40,60 @@
       <a href="LICENSES.txt" target="_blank" rel="noopener">授權告知</a>
     </div>
   </section>
+  <section id="fullscreen-prompt" role="dialog" aria-modal="true" aria-label="全螢幕確認" hidden>
+    <div class="card">
+      <p>瀏覽器需要直接確認。請再按一下進入全螢幕。</p>
+      <button id="fullscreen-confirm">進入全螢幕</button>
+      <button id="fullscreen-cancel">取消</button>
+      <p id="fullscreen-status" role="status" aria-live="polite"></p>
+    </div>
+  </section>
   <noscript>請啟用 JavaScript，或使用 Windows EXE 後備版。</noscript>
   <script src="index.js"></script>
   <script>
-    const config = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":5155456,"index.wasm":43682606},"focusCanvas":true,"gdextensionLibs":[]};
+    const config = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":5155568,"index.wasm":43682606},"focusCanvas":true,"gdextensionLibs":[]};
     const threadsEnabled = false;
     const engine = new Engine(config);
     const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
     const progress = document.getElementById('progress');
     const startButton = document.getElementById('start-button');
-    window.memoryBoxToggleFullscreen = function () {
+    const fullscreenPrompt = document.getElementById('fullscreen-prompt');
+    const fullscreenStatus = document.getElementById('fullscreen-status');
+    function closeFullscreenPrompt() {
+      fullscreenPrompt.hidden = true;
+      canvas.focus();
+    }
+    window.memoryBoxToggleFullscreen = function (event) {
+      // Canvas input reaches Godot on a later frame. Ask for a native gesture
+      // before attempting fullscreen, rather than triggering a rejected request.
+      if (window.memoryBoxStarted && !document.fullscreenElement && !(event && event.isTrusted)) {
+        fullscreenPrompt.hidden = false;
+        fullscreenStatus.textContent = '';
+        document.getElementById('fullscreen-confirm').focus();
+        return;
+      }
       const action = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-      if (action && action.catch) action.catch(() => { status.textContent = '瀏覽器未允許全螢幕；可用瀏覽器選單或 F11，遊戲仍可正常玩。'; });
+      // Godot may process canvas input on a later frame, outside the browser gesture.
+      // A native HTML confirmation supplies a new, direct user gesture if needed.
+      if (action && action.catch) action.catch(() => {
+        fullscreenPrompt.hidden = false;
+        fullscreenStatus.textContent = '若仍未允許，可用瀏覽器選單或 F11；取消不會影響進度。';
+        document.getElementById('fullscreen-confirm').focus();
+      });
     };
+    document.getElementById('fullscreen-confirm').addEventListener('click', window.memoryBoxToggleFullscreen);
+    document.getElementById('fullscreen-cancel').addEventListener('click', closeFullscreenPrompt);
+    document.addEventListener('fullscreenchange', closeFullscreenPrompt);
+    fullscreenPrompt.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { closeFullscreenPrompt(); event.preventDefault(); }
+      if (event.key === 'Tab') {
+        const confirm = document.getElementById('fullscreen-confirm');
+        const cancel = document.getElementById('fullscreen-cancel');
+        (document.activeElement === confirm ? cancel : confirm).focus();
+        event.preventDefault();
+      }
+    });
     document.getElementById('fullscreen-button').addEventListener('click', window.memoryBoxToggleFullscreen);
     startButton.addEventListener('click', async () => {
       startButton.disabled = true;
