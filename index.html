@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>小明與伯伯・回憶機關盒</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: #f5eedc; color: #493b2e; font-family: system-ui, sans-serif; }
+    body { overflow: hidden; }
+    #canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #canvas:focus { outline: none; }
+    #start-panel { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: #f5eedc; overflow: auto; }
+    .card { width: min(900px, 100%); padding: clamp(24px, 4vw, 60px); border: 2px solid #ad9670; border-radius: 24px; background: #fff9ed; text-align: center; }
+    h1 { font-size: clamp(30px, 3vw, 52px); margin: 0 0 24px; }
+    p, a { font-size: clamp(20px, 1.8vw, 28px); line-height: 1.6; }
+    button { padding: 20px 32px; min-height: 72px; margin: 10px; border: 2px solid #648151; border-radius: 16px; color: #26331e; background: #dce7c4; font: inherit; font-size: clamp(24px, 2.2vw, 36px); cursor: pointer; }
+    button:focus-visible { outline: 4px solid #ac5c35; }
+    button:disabled { cursor: progress; opacity: .65; }
+    #status { white-space: pre-wrap; }
+    progress { width: 80%; min-height: 24px; }
+    a { color: #64402b; }
+  </style>
+  
+</head>
+<body>
+  <canvas id="canvas" tabindex="0" aria-label="回憶機關盒遊戲畫面">瀏覽器不支援 Canvas，請改用最新 Chrome 或 Edge。</canvas>
+  <section id="start-panel" aria-label="開始遊戲">
+    <div class="card">
+      <h1>小明與伯伯・回憶機關盒</h1>
+      <p>課室觸碰大螢幕版<br>先完成現場活動，再確認取得拼圖。</p>
+      <button id="start-button">開始遊戲</button>
+      <button id="fullscreen-button">全螢幕</button>
+      <p id="status" role="status" aria-live="polite">首次載入需要下載遊戲資源，請保持網絡連線。</p>
+      <progress id="progress" hidden></progress>
+      <p>進度只保存在這個瀏覽器，與 EXE 不共用。<br>清除網站資料、無痕模式或換電腦可能失去進度。</p>
+      <a href="LICENSES.txt" target="_blank" rel="noopener">授權告知</a>
+    </div>
+  </section>
+  <noscript>請啟用 JavaScript，或使用 Windows EXE 後備版。</noscript>
+  <script src="index.js"></script>
+  <script>
+    const config = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":5155456,"index.wasm":43682606},"focusCanvas":true,"gdextensionLibs":[]};
+    const threadsEnabled = false;
+    const engine = new Engine(config);
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const progress = document.getElementById('progress');
+    const startButton = document.getElementById('start-button');
+    window.memoryBoxToggleFullscreen = function () {
+      const action = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      if (action && action.catch) action.catch(() => { status.textContent = '瀏覽器未允許全螢幕；可用瀏覽器選單或 F11，遊戲仍可正常玩。'; });
+    };
+    document.getElementById('fullscreen-button').addEventListener('click', window.memoryBoxToggleFullscreen);
+    startButton.addEventListener('click', async () => {
+      startButton.disabled = true;
+      const missing = Engine.getMissingFeatures({threads: threadsEnabled});
+      if (missing.length) {
+        status.textContent = '瀏覽器缺少所需功能：' + missing.join('、') + '\n請使用最新 Chrome／Edge，或 Windows EXE。';
+        startButton.disabled = false;
+        return;
+      }
+      const args = [];
+      // QA is explicit, uses only an isolated test save, and never resets normal play.
+      const query = new URLSearchParams(location.search);
+      const run = query.get('qa_run');
+      if (query.get('qa') === '1' && run && /^[a-z0-9_-]{1,48}$/i.test(run)) {
+        args.push('--', '--verify-build', '--verify-run=' + run);
+        if (query.get('resume') === '1') args.push('--verify-resume');
+      }
+      progress.hidden = false;
+      status.textContent = '正在載入，請稍候…';
+      try {
+        await engine.startGame({args, canvas, onProgress(current, total) {
+          if (total > 0) { progress.max = total; progress.value = current; }
+        }});
+        document.getElementById('start-panel').remove();
+        canvas.focus();
+        window.memoryBoxStarted = true;
+      } catch (error) {
+        console.error(error);
+        status.textContent = '載入失敗：' + String(error.message || error) + '\n請重新整理，或使用 Windows EXE。';
+        progress.hidden = true;
+      }
+    });
+  </script>
+</body>
+</html>
+
